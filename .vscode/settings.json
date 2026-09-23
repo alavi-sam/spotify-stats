@@ -1,3 +1,15 @@
 {
-    "sqltools.useNodeRuntime": true
+    "sqltools.useNodeRuntime": true,
+    "sqltools.connections": [
+        {
+            "connectionMethod": "Profile",
+            "previewLimit": 50,
+            "driver": "driver.athena",
+            "name": "spotify-dev",
+            "workgroup": "primary",
+            "region": "us-east-1",
+            "outputLocation": "s3://spotify-listening-history-767397767318-us-east-1-an/athena-results/",
+            "profile": "spotify-dev"
+        }
+    ]
 }

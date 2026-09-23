@@ -1,0 +1,4 @@
+.env
+.venv/
+dbt.log
+spotify-local-dev-policy.json

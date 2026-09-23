@@ -1,0 +1,1 @@
+select track.name, played_at from recently_played

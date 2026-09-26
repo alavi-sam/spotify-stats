@@ -10,3 +10,13 @@ models:
       - name: artist_name
         data_tests:
           - not_null
+
+  - name: dim_album
+    columns:
+      - name: album_id
+        data_tests:
+          - unique
+          - not_null
+      - name: album_name
+        data_tests:
+          - not_null

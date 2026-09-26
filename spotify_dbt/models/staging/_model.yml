@@ -1,21 +1,33 @@
+version: 2
+
 models:
   - name: stg_spotify__plays
+    description: >
+      One row per Spotify play from the recently-played API. Flattened from the
+      raw nested JSON, with timestamps parsed to UTC and Toronto local time.
     columns:
       - name: play_id
+        description: "Play timestamp (UTC) in epoch milliseconds. Primary key."
         data_tests:
           - not_null
           - unique
       - name: track_id
+        description: "Spotify track ID of the played track."
         data_tests:
           - not_null
       - name: played_at_utc
+        description: "When the play was recorded by Spotify, in UTC. Roughly the end of the play."
         data_tests:
           - not_null
       - name: played_at_local
+        description: "The same moment as played_at_utc, as America/Toronto clock time."
         data_tests:
           - not_null
 
   - name: stg_spotify__album_artists
+    description: >
+      One row per (album, artist) pair: every artist credited on an album,
+      unnested from the raw album artist list.
     data_tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -24,24 +36,34 @@ models:
               - artist_id
     columns:
       - name: album_id
+        description: "Spotify album ID."
         data_tests:
           - not_null
       - name: artist_id
+        description: "Spotify artist ID of an artist credited on the album."
         data_tests:
           - not_null
+      - name: artist_position
+        description: "Position in the album's artist list; 1 is the main album artist."
+
   - name: stg_spotify__track_artists
+    description: >
+      One row per (track, artist) pair: every artist performing on a track,
+      including featured artists, unnested from the raw track artist list.
     data_tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
             combination_of_columns:
               - track_id
               - artist_id
-
     columns:
       - name: track_id
+        description: "Spotify track ID."
         data_tests:
           - not_null
       - name: artist_id
+        description: "Spotify artist ID of an artist performing on the track."
         data_tests:
           - not_null
-
+      - name: artist_position
+        description: "Position in the track's artist list; 1 is the main artist, 2+ are featured artists."

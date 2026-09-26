@@ -14,6 +14,7 @@ local_time as (
 unnested as (
     select
         track.album.album_type,
+        track.album.name as album_name,
         track.album.artists as album_artists,
         track.album.href as album_url,
         track.album.id as album_id,

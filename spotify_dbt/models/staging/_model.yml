@@ -29,7 +29,7 @@ models:
       - name: artist_id
         data_tests:
           - not_null
-  - name: stg_spotify_track_artists
+  - name: stg_spotify__track_artists
     data_tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:

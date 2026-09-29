@@ -125,6 +125,10 @@ models:
       - name: play_date_local
         data_tests:
           - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_day
 
       - name: partition_date
         data_tests:
@@ -135,6 +139,14 @@ models:
           - not_null
 
       - name: play_id
+        data_tests:
+          - unique
+          - not_null
+    
+
+  - name: dim_date
+    columns:
+      - name: date_day
         data_tests:
           - unique
           - not_null

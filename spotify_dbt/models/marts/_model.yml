@@ -133,3 +133,8 @@ models:
       - name: duration_ms
         data_tests:
           - not_null
+
+      - name: play_id
+        data_tests:
+          - unique
+          - not_null

@@ -1,15 +1,16 @@
-Welcome to your new dbt project!
+# spotify_dbt
 
-### Using the starter project
+This directory contains the dbt transformation project for the Spotify Listening History Warehouse.
 
-Try running the following commands:
-- dbt run
-- dbt test
+For the complete architecture, AWS setup, Lambda deployment, GitHub Actions configuration, model documentation, and troubleshooting guide, see the [repository README](../README.md).
 
+## Quick start
 
-### Resources:
-- Learn more about dbt [in the docs](https://docs.getdbt.com/docs/introduction)
-- Check out [Discourse](https://discourse.getdbt.com/) for commonly asked questions and answers
-- Join the [chat](https://community.getdbt.com/) on Slack for live discussions and support
-- Find [dbt events](https://events.getdbt.com) near you
-- Check out [the blog](https://blog.getdbt.com/) for the latest news on dbt's development and best practices
+```bash
+python -m pip install --requirement requirements.txt
+dbt deps
+dbt debug
+dbt build
+```
+
+The project uses Athena, the AWS Glue Data Catalog, S3-backed tables, and an incremental Iceberg `fct_plays` model. Local AWS credentials belong in `~/.aws` and `~/.dbt/profiles.yml`; do not commit them to this directory.

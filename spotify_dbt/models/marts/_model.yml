@@ -41,3 +41,24 @@ models:
       - name: duration_ms
         data_tests:
           - not_null
+
+  - name: bridge_artist_track
+    columns:
+      - name: track_artist_id
+        data_tests:
+          - unique
+          - not_null
+      - name: track_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_track')
+                field: track_id
+      - name: artist_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_artist')
+                field: artist_id

@@ -13,7 +13,7 @@ select
     duration_ms,
     track_disc_number,
     explicit,
-    element_at(track.external_urls, 'spotify') as track_url,
+    element_at(track_external_urls, 'spotify') as track_url,
     is_track_local,
     is_track_playable,
     track_number    

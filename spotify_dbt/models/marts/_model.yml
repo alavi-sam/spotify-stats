@@ -20,3 +20,24 @@ models:
       - name: album_name
         data_tests:
           - not_null
+
+  - name: dim_track
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - album_id
+              - track_id
+    columns:
+      - name: track_id
+        data_tests:
+          - not_null
+          - unique
+
+      - name: track_name
+        data_tests:
+          - not_null
+
+      - name: duration_ms
+        data_tests:
+          - not_null

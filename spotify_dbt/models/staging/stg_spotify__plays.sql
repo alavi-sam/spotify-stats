@@ -40,7 +40,8 @@ unnested as (
         track.type as track_type,
         cast(format_datetime(from_iso8601_timestamp(played_at) at time zone 'America/Toronto', 'yyyy-MM-dd HH:mm:ss.SSS') as timestamp) as played_at_local,
         cast(from_iso8601_timestamp(played_at) as timestamp) as played_at_utc,
-        play_id
+        play_id,
+        dt as parsed_time
     from local_time
 )
 

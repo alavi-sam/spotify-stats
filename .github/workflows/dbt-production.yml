@@ -9,6 +9,8 @@ on:
       - ".github/dbt/profiles.yml"
       - ".github/workflows/dbt-production.yml"
   workflow_dispatch:
+  schedule:
+      - cron: "15 */4 * * *"
 
 permissions:
   contents: read

@@ -48,3 +48,4 @@ unnested as (
 
 
 
+select * from unnested

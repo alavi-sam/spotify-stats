@@ -10,7 +10,7 @@ on:
       - ".github/workflows/dbt-production.yml"
   workflow_dispatch:
   schedule:
-      - cron: "15 */4 * * *"
+      - cron: "15 * * * *"
 
 permissions:
   contents: read

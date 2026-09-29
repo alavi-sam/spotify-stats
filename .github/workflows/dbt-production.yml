@@ -1,0 +1,80 @@
+name: dbt production
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "spotify_dbt/**"
+      - ".github/dbt/profiles.yml"
+      - ".github/workflows/dbt-production.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: spotify-dbt-production
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and test production
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: spotify_dbt
+
+    env:
+      DBT_S3_DATA_DIR: ${{ vars.DBT_S3_DATA_DIR }}
+      DBT_S3_STAGING_DIR: ${{ vars.DBT_S3_STAGING_DIR }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: spotify_dbt/requirements.txt
+
+      - name: Install dbt
+        run: python -m pip install --requirement requirements.txt
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DBT_ROLE_ARN }}
+          aws-region: us-east-1
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+          role-session-name: spotify-dbt-${{ github.run_id }}
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Install dbt packages
+        run: dbt deps --profiles-dir ../.github/dbt
+
+      - name: Validate connection
+        run: dbt debug --target prod --profiles-dir ../.github/dbt
+
+      - name: Build and test models
+        run: dbt build --target prod --profiles-dir ../.github/dbt
+
+      - name: Upload dbt artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-production-${{ github.run_id }}
+          path: |
+            spotify_dbt/target/manifest.json
+            spotify_dbt/target/run_results.json
+            spotify_dbt/logs/dbt.log
+          if-no-files-found: ignore
+          retention-days: 14

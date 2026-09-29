@@ -1,0 +1,11 @@
+spotify_dbt:
+  target: prod
+  outputs:
+    prod:
+      type: athena
+      database: awsdatacatalog
+      schema: spotify_analytics
+      region_name: us-east-1
+      s3_data_dir: "{{ env_var('DBT_S3_DATA_DIR') }}"
+      s3_staging_dir: "{{ env_var('DBT_S3_STAGING_DIR') }}"
+      threads: 4

@@ -87,3 +87,49 @@ models:
               arguments:
                 to: ref('dim_artist')
                 field: artist_id
+
+  - name: fct_plays
+    columns:
+      - name: track_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_track')
+                field: track_id
+
+      - name: album_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_album')
+                field: album_id
+
+      - name: main_artist_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_artist')
+                field: artist_id
+
+      - name: played_at_local
+        data_tests:
+          - not_null
+
+      - name: played_at_utc
+        data_tests:
+          - not_null
+
+      - name: play_date_local
+        data_tests:
+          - not_null
+
+      - name: partition_date
+        data_tests:
+          - not_null
+
+      - name: duration_ms
+        data_tests:
+          - not_null

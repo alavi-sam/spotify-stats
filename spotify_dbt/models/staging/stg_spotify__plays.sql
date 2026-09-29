@@ -41,7 +41,8 @@ unnested as (
         cast(format_datetime(from_iso8601_timestamp(played_at) at time zone 'America/Toronto', 'yyyy-MM-dd HH:mm:ss.SSS') as timestamp) as played_at_local,
         cast(from_iso8601_timestamp(played_at) as timestamp) as played_at_utc,
         play_id,
-        dt as parsed_time
+        context as context_type,
+        dt as partition_date
     from local_time
 )
 

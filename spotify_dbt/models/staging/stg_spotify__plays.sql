@@ -46,6 +46,4 @@ unnested as (
     from local_time
 )
 
-
-
 select * from unnested

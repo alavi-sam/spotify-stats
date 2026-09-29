@@ -23,7 +23,6 @@ select
     cast(played_at_local as date) as play_date_local,
     partition_date
 from source
-select * from unnested
 
 {% if is_incremental() %}
 where played_at_utc > (

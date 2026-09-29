@@ -48,6 +48,7 @@ models:
         data_tests:
           - unique
           - not_null
+
       - name: track_id
         data_tests:
           - not_null
@@ -55,6 +56,30 @@ models:
               arguments:
                 to: ref('dim_track')
                 field: track_id
+
+      - name: artist_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_artist')
+                field: artist_id
+
+  - name: bridge_artist_album
+    columns:
+      - name: album_artist_id
+        data_tests:
+          - unique
+          - not_null
+
+      - name: album_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_album')
+                field: album_id
+
       - name: artist_id
         data_tests:
           - not_null

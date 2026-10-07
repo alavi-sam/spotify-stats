@@ -1,0 +1,29 @@
+version: 2
+
+models:
+  - name: stg_deezer__album_genres
+    description: >
+      One row per Spotify album with its Deezer genres. Raw records are written
+      once per fetch, so albums retried on different days are deduplicated to
+      the most recent fetch.
+    columns:
+      - name: album_id
+        description: "Spotify album ID. Primary key."
+        data_tests:
+          - not_null
+          - unique
+      - name: deezer_album_id
+        description: "Deezer album ID matched via a track ISRC. Null when status is no_match."
+      - name: status
+        description: "Result of the latest fetch: completed, no_match, no_genre or error."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['completed', 'no_match', 'no_genre', 'error']
+      - name: genres
+        description: "Deezer genre names for the album. Empty unless status is completed."
+      - name: fetched_at
+        description: "When the connector fetched this record, in UTC."
+        data_tests:
+          - not_null

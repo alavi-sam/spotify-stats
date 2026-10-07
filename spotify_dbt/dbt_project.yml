@@ -1,24 +1,30 @@
 #  Name your project! Project names should contain only lowercase characters
 # and underscores. A good package name should reflect your organization's
 # name or the intended use of these models
-name: 'spotify_dbt'
+name: spotify_dbt
 profile: spotify_dbt
-version: '1.0.0'
+version: 1.0.0
 
 # These configurations specify where dbt should look for different types of files.
 # The `model-paths` config, for example, states that models in this project can be
 # found in the "models/" directory. You probably won't need to change these!
-model-paths: ["models"]
-analysis-paths: ["analyses"]
-test-paths: ["tests"]
-seed-paths: ["seeds"]
-macro-paths: ["macros"]
-snapshot-paths: ["snapshots"]
+model-paths:
+  - models
+analysis-paths:
+  - analyses
+test-paths:
+  - tests
+seed-paths:
+  - seeds
+macro-paths:
+  - macros
+snapshot-paths:
+  - snapshots
 
-clean-targets:         # directories to be removed by `dbt clean`
-  - "target"
-  - "dbt_packages"
-
+clean-targets:
+  # directories to be removed by `dbt clean`
+  - target
+  - dbt_packages
 
 # Configuring models
 # Full documentation: https://docs.getdbt.com/docs/configuring-models
@@ -28,8 +34,14 @@ clean-targets:         # directories to be removed by `dbt clean`
 # files using the `{{ config(...) }}` macro.
 models:
   spotify_dbt:
-    # Config indicated by + and applies to all files under models/example/
-    staging:
-      +materialized: view
-    marts:
-      +materialized: table
+    spotify:
+      staging:
+        +materialized: view
+      marts:
+        +materialized: table
+
+    deezer:
+      staging:
+        +materialized: view
+      marts:
+        +materialized: table

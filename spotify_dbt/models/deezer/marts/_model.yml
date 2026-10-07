@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: dim_genres
+    columns:
+      - name: genre_id
+        data_tests:
+          - unique
+          - not_null
+      - name: genre
+        data_tests:
+          - unique
+          - not_null
+
+  - name: bridge_album_genre
+    columns:
+      - name: album_genre_id
+        data_tests:
+          - unique
+          - not_null
+
+      - name: album_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_album')
+                field: album_id
+
+      - name: genre_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_genres')
+                field: genre_id

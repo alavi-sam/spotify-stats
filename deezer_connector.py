@@ -74,7 +74,6 @@ def get_query_results(query_execution_id):
         rows.extend(page['ResultSet']['Rows'])
     return rows
 
-
 def run_athena_query(query):
     query_id = query_database(query)
     execution_details = get_execution_result(query_id)

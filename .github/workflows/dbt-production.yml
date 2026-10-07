@@ -10,7 +10,8 @@ on:
       - ".github/workflows/dbt-production.yml"
   workflow_dispatch:
   schedule:
-      - cron: "15 * * * *"
+    - cron: "15 * * * *"   # hourly: Spotify models only
+    - cron: "40 9 * * *"   # daily (UTC): full build, after the 3:05 Toronto enrichment
 
 permissions:
   contents: read
@@ -66,7 +67,14 @@ jobs:
       - name: Validate connection
         run: dbt debug --target prod --profiles-dir ../.github/dbt
 
-      - name: Build and test models
+      # Hourly schedule: only the Spotify models (new plays into fct_plays)
+      - name: Build and test Spotify models (hourly)
+        if: github.event.schedule == '15 * * * *'
+        run: dbt build --target prod --profiles-dir ../.github/dbt --select path:models/spotify
+
+      # Daily schedule, push, or manual run: everything
+      - name: Build and test all models (daily, push, manual)
+        if: github.event.schedule != '15 * * * *'
         run: dbt build --target prod --profiles-dir ../.github/dbt
 
       - name: Upload dbt artifacts

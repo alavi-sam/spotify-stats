@@ -8,10 +8,19 @@ on:
       - "spotify_dbt/**"
       - ".github/dbt/profiles.yml"
       - ".github/workflows/dbt-production.yml"
+  # Scheduled runs are dispatched by EventBridge Scheduler via the
+  # trigger-spotify-dbt-github-action Lambda (GitHub's cron drops runs):
+  #   hourly at :15        -> mode: spotify
+  #   daily 04:40 Toronto  -> mode: full
   workflow_dispatch:
-  schedule:
-    - cron: "15 * * * *"   # hourly: Spotify models only
-    - cron: "40 9 * * *"   # daily (UTC): full build, after the 3:05 Toronto enrichment
+    inputs:
+      mode:
+        description: "spotify = Spotify models only, full = all models"
+        type: choice
+        options:
+          - full
+          - spotify
+        default: full
 
 permissions:
   contents: read
@@ -67,14 +76,14 @@ jobs:
       - name: Validate connection
         run: dbt debug --target prod --profiles-dir ../.github/dbt
 
-      # Hourly schedule: only the Spotify models (new plays into fct_plays)
+      # Hourly dispatch: only the Spotify models (new plays into fct_plays)
       - name: Build and test Spotify models (hourly)
-        if: github.event.schedule == '15 * * * *'
+        if: inputs.mode == 'spotify'
         run: dbt build --target prod --profiles-dir ../.github/dbt --select path:models/spotify
 
-      # Daily schedule, push, or manual run: everything
+      # Daily dispatch, push, or manual run: everything
       - name: Build and test all models (daily, push, manual)
-        if: github.event.schedule != '15 * * * *'
+        if: inputs.mode != 'spotify'
         run: dbt build --target prod --profiles-dir ../.github/dbt
 
       - name: Upload dbt artifacts

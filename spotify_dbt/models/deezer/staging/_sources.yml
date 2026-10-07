@@ -1,0 +1,8 @@
+version: 2
+
+sources:
+  - name: deezer_raw
+    database: awsdatacatalog
+    schema: deezer_raw
+    tables:
+      - name: album_genres

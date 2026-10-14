@@ -233,6 +233,23 @@ Models are grouped by source under `models/spotify/` and `models/deezer/`.
 
 A fact row is a play event, not proof that the full track was heard. `duration_ms` is full track duration, not actual listening time.
 
+`fct_plays` is partitioned by `month(played_at_local)` and keeps 7 days of Iceberg snapshots. The daily build passes `--vars '{iceberg_maintenance: true}'`, which runs `OPTIMIZE` and `VACUUM` on it as post-hooks to compact the files the hourly merges write.
+
+### Reporting
+
+Dashboard-facing tables under `models/reporting/`, built from the marts. They live outside `models/spotify/`, so they rebuild with the daily build, not the hourly one. Every column is documented in `models/reporting/_model.yml`.
+
+| Model | Grain |
+| --- | --- |
+| `agg_daily_listening` | One row per day from the first play to today, zero-filled |
+| `agg_daily_track_plays` | One row per day and track played |
+| `agg_daily_artist_plays` | One row per day and main artist played |
+| `agg_daily_genre_plays` | One row per day and genre played; a play counts once per album genre |
+| `agg_listening_by_weekday_hour` | One row per weekday and hour of day (168 rows) |
+| `rpt_plays_enriched` | One row per play with track, album, artist, genre, and time attributes |
+
+`est_minutes_played` sums full track lengths, so it overstates time for skipped tracks. `tests/assert_reporting_play_counts_match_fct_plays.sql` checks that every reporting table reconciles to `fct_plays`.
+
 The project stores UTC and `America/Toronto` timestamps. Make timezone an account-level setting before supporting users in other regions.
 
 ## Local dbt development

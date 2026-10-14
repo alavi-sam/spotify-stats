@@ -6,8 +6,8 @@ with daily as (
         main_artist_id,
         count(*)                                    as play_count,
         round(sum(duration_ms) / 60000.0, 1)        as est_minutes_played,
-        min(played_at_local)                        as first_played_at,
-        max(played_at_local)                        as last_played_at
+        cast(min(played_at_local) as timestamp(3)) as first_played_at,
+        cast(max(played_at_local) as timestamp(3)) as last_played_at
     from {{ ref('fct_plays') }}
     group by play_date_local, track_id, album_id, main_artist_id
 )

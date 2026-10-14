@@ -17,8 +17,8 @@ daily as (
         count(distinct track_id)                    as distinct_tracks,
         count(distinct main_artist_id)              as distinct_artists,
         count(distinct album_id)                    as distinct_albums,
-        min(played_at_local)                        as first_play_at,
-        max(played_at_local)                        as last_play_at
+        cast(min(played_at_local) as timestamp(3)) as first_play_at,
+        cast(max(played_at_local) as timestamp(3)) as last_play_at
     from plays
     group by play_date_local
 ),

@@ -18,8 +18,8 @@ album_genres as (
 
 select
     p.play_id,
-    p.played_at_local,
-    p.played_at_utc,
+    cast(p.played_at_local as timestamp(3))     as played_at_local,
+    cast(p.played_at_utc as timestamp(3))       as played_at_utc,
     p.play_date_local,
     hour(p.played_at_local)                     as hour_of_day,
     d.day_of_week,

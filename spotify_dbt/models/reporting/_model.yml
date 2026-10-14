@@ -1,0 +1,248 @@
+version: 2
+
+# Gold layer for the dashboard and the text-to-SQL "Ask" page.
+# All times are local (America/Toronto). "est_minutes_played" sums full track
+# lengths, because Spotify doesn't report how long a track was actually played,
+# so skipped tracks count in full.
+
+models:
+  - name: agg_daily_listening
+    description: >
+      One row per calendar day from the first recorded play through today
+      (Toronto time), including days with no listening (zeros). Use for daily
+      totals, trends and KPI tiles.
+    columns:
+      - name: date_day
+        description: Calendar day (local time). Unique.
+        data_tests:
+          - unique
+          - not_null
+      - name: year
+        description: Calendar year of date_day.
+      - name: month
+        description: Month number of date_day (1-12).
+      - name: month_name
+        description: Month name of date_day, e.g. 'October'.
+      - name: day_of_week
+        description: ISO day of week of date_day, 1 = Monday ... 7 = Sunday.
+      - name: day_name
+        description: Day name of date_day, e.g. 'Monday'.
+      - name: is_weekend
+        description: True when date_day is a Saturday or Sunday.
+      - name: play_count
+        description: Number of plays (track listens) that day. 0 on days with no listening.
+        data_tests:
+          - not_null
+      - name: est_minutes_played
+        description: Estimated minutes listened that day (sum of full track lengths of the plays).
+      - name: distinct_tracks
+        description: Number of different tracks played that day.
+      - name: distinct_artists
+        description: Number of different main (first-credited) artists played that day.
+      - name: distinct_albums
+        description: Number of different albums played that day.
+      - name: new_tracks
+        description: Number of tracks played for the first time ever on that day (discoveries).
+      - name: first_play_at
+        description: Local timestamp of the first play that day; null on days with no plays.
+      - name: last_play_at
+        description: Local timestamp of the last play that day; null on days with no plays.
+
+  - name: agg_daily_track_plays
+    description: >
+      One row per day per track that was played that day. Use for "what did I
+      listen to on <day>", top tracks over a date range, and repeat listens.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - play_date_local
+              - track_id
+    columns:
+      - name: play_date_local
+        description: Calendar day of the plays (local time).
+        data_tests:
+          - not_null
+      - name: track_id
+        description: Spotify track ID.
+        data_tests:
+          - not_null
+      - name: track_name
+        description: Track title.
+      - name: album_id
+        description: Spotify album ID the track belongs to.
+      - name: album_name
+        description: Album title.
+      - name: main_artist_id
+        description: Spotify ID of the track's main (first-credited) artist.
+      - name: main_artist_name
+        description: Name of the track's main (first-credited) artist.
+      - name: play_count
+        description: Times the track was played that day.
+        data_tests:
+          - not_null
+      - name: est_minutes_played
+        description: Estimated minutes of this track that day (play_count x track length).
+      - name: first_played_at
+        description: Local timestamp of the first play of the track that day.
+      - name: last_played_at
+        description: Local timestamp of the last play of the track that day.
+
+  - name: agg_daily_artist_plays
+    description: >
+      One row per day per main (first-credited) artist that was played that
+      day. Use for top artists over a date range. Featured artists are not
+      counted; play totals match total plays.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - play_date_local
+              - artist_id
+    columns:
+      - name: play_date_local
+        description: Calendar day of the plays (local time).
+        data_tests:
+          - not_null
+      - name: artist_id
+        description: Spotify artist ID of the main artist.
+        data_tests:
+          - not_null
+      - name: artist_name
+        description: Artist name.
+      - name: play_count
+        description: Plays of tracks by this artist (as main artist) that day.
+        data_tests:
+          - not_null
+      - name: est_minutes_played
+        description: Estimated minutes of this artist that day (sum of full track lengths).
+      - name: distinct_tracks
+        description: Number of different tracks by this artist played that day.
+
+  - name: agg_daily_genre_plays
+    description: >
+      One row per day per genre that was played that day. Genres come from
+      Deezer at album level. A play counts once for EVERY genre of its album,
+      so summing play_count across genres gives more than the total number of
+      plays; use agg_daily_listening for totals. Albums without Deezer genre
+      data are grouped as genre 'Unknown'.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - play_date_local
+              - genre_id
+    columns:
+      - name: play_date_local
+        description: Calendar day of the plays (local time).
+        data_tests:
+          - not_null
+      - name: genre_id
+        description: Genre key; 'unknown' for albums without genre data.
+        data_tests:
+          - not_null
+      - name: genre
+        description: Genre name, e.g. 'Pop', 'Rap/Hip Hop'; 'Unknown' when no genre data.
+        data_tests:
+          - not_null
+      - name: play_count
+        description: Plays that day of tracks whose album has this genre.
+        data_tests:
+          - not_null
+      - name: est_minutes_played
+        description: Estimated minutes of this genre that day (sum of full track lengths).
+      - name: distinct_tracks
+        description: Number of different tracks of this genre played that day.
+
+  - name: agg_listening_by_weekday_hour
+    description: >
+      Listening pattern over the whole history: always 168 rows, one per
+      weekday x hour of day (local time), zeros where nothing was played.
+      Use for a "when do I listen" heatmap.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - day_of_week
+              - hour_of_day
+    columns:
+      - name: day_of_week
+        description: ISO day of week, 1 = Monday ... 7 = Sunday.
+        data_tests:
+          - not_null
+      - name: day_name
+        description: Day name, e.g. 'Monday'.
+      - name: hour_of_day
+        description: Hour of day, 0-23 (local time).
+        data_tests:
+          - not_null
+      - name: play_count
+        description: Total plays in this weekday/hour slot across the whole history.
+        data_tests:
+          - not_null
+      - name: est_minutes_played
+        description: Estimated total minutes in this slot across the whole history.
+      - name: weekday_occurrences
+        description: How many times this weekday occurs between the first play and today.
+      - name: avg_plays_per_day
+        description: Average plays in this hour on this weekday (play_count / weekday_occurrences).
+
+  - name: rpt_plays_enriched
+    description: >
+      One row per play (every track listen), with track, album, artist, genre
+      and time attributes already joined. The most flexible table: use it for
+      any question the aggregate tables can't answer.
+    columns:
+      - name: play_id
+        description: Unique ID of the play.
+        data_tests:
+          - unique
+          - not_null
+      - name: played_at_local
+        description: When the track was played, local time (America/Toronto).
+        data_tests:
+          - not_null
+      - name: played_at_utc
+        description: When the track was played, UTC.
+      - name: play_date_local
+        description: Calendar day of the play (local time).
+        data_tests:
+          - not_null
+      - name: hour_of_day
+        description: Hour of the play, 0-23 (local time).
+      - name: day_of_week
+        description: ISO day of week of the play, 1 = Monday ... 7 = Sunday.
+      - name: day_name
+        description: Day name of the play, e.g. 'Monday'.
+      - name: is_weekend
+        description: True when the play was on a Saturday or Sunday.
+      - name: track_id
+        description: Spotify track ID.
+        data_tests:
+          - not_null
+      - name: track_name
+        description: Track title.
+      - name: duration_ms
+        description: Full track length in milliseconds (not necessarily how long it was played).
+      - name: explicit
+        description: True when the track is marked explicit.
+      - name: album_id
+        description: Spotify album ID.
+      - name: album_name
+        description: Album title.
+      - name: album_type
+        description: Album type, e.g. 'album', 'single', 'compilation'.
+      - name: release_date
+        description: Album release date as text; may be just a year or year-month.
+      - name: album_image_url
+        description: URL of the album cover image.
+      - name: main_artist_id
+        description: Spotify ID of the main (first-credited) artist.
+      - name: main_artist_name
+        description: Name of the main (first-credited) artist.
+      - name: all_artist_names
+        description: All credited artists in credit order, comma-separated, e.g. 'Drake, Rihanna'.
+      - name: genres
+        description: Album genres from Deezer, comma-separated, e.g. 'Pop, Dance'; 'Unknown' when no data.
+      - name: context_type
+        description: Where the play was started from, e.g. 'playlist', 'album', 'artist'; null when unknown.

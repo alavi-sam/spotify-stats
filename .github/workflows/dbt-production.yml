@@ -81,10 +81,11 @@ jobs:
         if: inputs.mode == 'spotify'
         run: dbt build --target prod --profiles-dir ../.github/dbt --select path:models/spotify
 
-      # Daily dispatch, push, or manual run: everything
+      # Daily dispatch, push, or manual run: everything, plus Iceberg
+      # OPTIMIZE + VACUUM post-hooks (compacts the hourly merges' small files)
       - name: Build and test all models (daily, push, manual)
         if: inputs.mode != 'spotify'
-        run: dbt build --target prod --profiles-dir ../.github/dbt
+        run: dbt build --target prod --profiles-dir ../.github/dbt --vars '{iceberg_maintenance: true}'
 
       - name: Upload dbt artifacts
         if: always()

@@ -58,10 +58,16 @@ Pipeline sequence:
 |   |   |-- spotify/
 |   |   |   |-- staging/
 |   |   |   `-- marts/
-|   |   `-- deezer/
-|   |       |-- staging/
-|   |       `-- marts/
+|   |   |-- deezer/
+|   |   |   |-- staging/
+|   |   |   `-- marts/
+|   |   `-- reporting/
+|   |-- seeds/
 |   `-- tests/
+|-- dashboard/
+|   |-- app.py
+|   |-- views/
+|   `-- export_reporting.py
 `-- .github/
     |-- dbt/profiles.yml
     `-- workflows/dbt-production.yml
@@ -327,6 +333,30 @@ Create a GitHub environment named `production` with:
 | `DBT_S3_STAGING_DIR` | S3 location for Athena results |
 
 Restrict the environment and IAM OIDC subject to this repository and `main`. The role needs Athena query access, read access to `spotify_raw`, relation-management access to `spotify_analytics`, Glue table-version access, raw S3 read access, and read/write/delete access to warehouse and query-result prefixes.
+
+## Dashboard
+
+A Streamlit app in `dashboard/` with four pages: Overview, Top, When I listen, and Genres.
+
+The app never queries Athena. After each daily/full dbt build, the workflow runs `dashboard/export_reporting.py`, which runs `select *` on every `agg_*`/`rpt_*` table and writes them into one DuckDB file at `s3://<bucket>/dashboard/spotify.duckdb`. The app downloads that file (re-checked hourly) and queries it in memory, using the `spotify-dashboard-reader` IAM user, which can only `s3:GetObject` that one object.
+
+### Run locally
+
+```bash
+python -m venv dashboard/.venv
+dashboard/.venv/bin/pip install -r dashboard/requirements.txt -r dashboard/requirements-export.txt
+AWS_PROFILE=spotify-dev dashboard/.venv/bin/python dashboard/export_reporting.py   # writes dashboard/spotify.duckdb
+dashboard/.venv/bin/streamlit run dashboard/app.py
+```
+
+When `dashboard/spotify.duckdb` exists the app uses it instead of S3.
+
+### Deploy (Streamlit Community Cloud)
+
+1. Create the app from this repo with main file `dashboard/app.py`.
+2. In the app's Settings → Secrets, paste `dashboard/.streamlit/secrets.toml.example` with the reader user's access key.
+
+The CI role also needs `s3:PutObject` on `dashboard/spotify.duckdb` to upload the export.
 
 ## Monitoring
 

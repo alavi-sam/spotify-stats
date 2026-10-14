@@ -1,0 +1,6 @@
+# Used by CI (and locally) to export the reporting tables from Athena.
+# boto3/PyAthena are left unpinned: in CI they come with dbt-athena.
+duckdb==1.5.6
+pandas==3.0.6
+PyAthena>=3.0
+boto3

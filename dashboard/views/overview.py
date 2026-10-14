@@ -12,31 +12,27 @@ daily = query("select * from agg_daily_listening order by date_day")
 latest = daily["date_day"].max()
 st.caption(f"Data through {latest:%A, %B %-d, %Y} · times are Toronto local")
 
-# --- last 7 days vs the 7 before -------------------------------------------
+# --- last 7 full days vs the 7 before ----------------------------------------
+# The export runs early in the morning, so the latest day has barely started;
+# the comparison ends at the last complete day instead.
+last_full = (latest - pd.Timedelta(days=1)).date()
 window = query("""
-    with bounds as (select max(date_day) as d from agg_daily_listening),
-    periods as (
-        select
-            case when play_date_local > d - 7 then 'current' else 'previous' end as period,
-            *
-        from rpt_plays_enriched, bounds
-        where play_date_local > d - 14
-    )
     select
-        period,
-        count(*)                            as plays,
-        round(sum(duration_ms) / 3600000.0, 1) as hours,
-        count(distinct main_artist_id)      as artists
-    from periods
-    group by period
-""").set_index("period")
+        case when play_date_local > ?::date - 7 then 'current' else 'previous' end as period,
+        count(*)                                as plays,
+        round(sum(duration_ms) / 3600000.0, 1)  as hours,
+        count(distinct main_artist_id)          as artists
+    from rpt_plays_enriched
+    where play_date_local > ?::date - 14 and play_date_local <= ?::date
+    group by 1
+""", (last_full, last_full, last_full)).set_index("period")
 new_tracks = query("""
     select
-        sum(new_tracks) filter (where date_day > (select max(date_day) from agg_daily_listening) - 7) as current,
-        sum(new_tracks) filter (where date_day <= (select max(date_day) from agg_daily_listening) - 7
-                                  and date_day > (select max(date_day) from agg_daily_listening) - 14) as previous
+        sum(new_tracks) filter (where date_day > ?::date - 7)   as current,
+        sum(new_tracks) filter (where date_day <= ?::date - 7)  as previous
     from agg_daily_listening
-""").iloc[0]
+    where date_day > ?::date - 14 and date_day <= ?::date
+""", (last_full, last_full, last_full, last_full)).iloc[0]
 
 
 def kpi(col, label, current, previous, fmt="{:,.0f}", help=None):
@@ -46,7 +42,10 @@ def kpi(col, label, current, previous, fmt="{:,.0f}", help=None):
     col.metric(label, fmt.format(current), delta, delta_color="off", border=True, help=help)
 
 
-st.subheader("Last 7 days", help="Compared with the 7 days before.")
+first_full = last_full - pd.Timedelta(days=6)
+st.subheader("Last 7 days", help="The last 7 complete days, compared with the 7 days before. "
+                                 "Today is left out because it's still in progress.")
+st.caption(f"{first_full:%b %-d} – {last_full:%b %-d}")
 k1, k2, k3, k4 = st.columns(4)
 for col, label, field, fmt, help in [
     (k1, "Plays", "plays", "{:,.0f}", None),

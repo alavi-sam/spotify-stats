@@ -1,29 +1,53 @@
 # Spotify Listening History Warehouse
 
-An automated personal analytics pipeline that collects Spotify recently played tracks, enriches albums with Deezer genres, stores raw API responses in Amazon S3, exposes them through AWS Glue and Athena, and transforms them into an analytics-ready star schema with dbt.
+An automated personal analytics pipeline that collects Spotify recently played tracks, enriches albums with Deezer genres, stores raw API responses in Amazon S3, exposes them through AWS Glue and Athena, transforms them into an analytics-ready star schema and reporting tables with dbt, and publishes them as a Streamlit dashboard.
 
-The ingestion Lambda runs hourly. Fifteen minutes later, EventBridge Scheduler dispatches the GitHub Actions dbt workflow to refresh the Spotify models. A daily Deezer enrichment Lambda runs at 03:30 Toronto time, followed by a full dbt build at 04:40.
+**Live dashboard:** https://my-spotify.streamlit.app/
+
+The ingestion Lambda runs hourly. Fifteen minutes later, EventBridge Scheduler dispatches the GitHub Actions dbt workflow to refresh the Spotify models. A daily Deezer enrichment Lambda runs at 03:30 Toronto time, followed by a full dbt build at 04:40, which also refreshes the dashboard's data.
 
 ## Architecture
 
 ```mermaid
-flowchart LR
-    EB[EventBridge Scheduler<br/>hourly at :00] --> L[Spotify Lambda<br/>spotify_connector.lambda_handler]
-    L --> AUTH[Spotify Accounts API]
-    L --> API[Spotify Recently Played API]
-    L <--> SSM[SSM Parameter Store]
-    L --> S3[(S3 raw JSON<br/>partitioned by date)]
-    EBD[EventBridge Scheduler<br/>daily 03:30 Toronto] --> D[Deezer Lambda<br/>deezer_connector.lambda_handler]
-    D <--> DDB[(DynamoDB<br/>spotify-track-enrichment)]
-    D --> DZ[Deezer API]
-    D --> S3
-    S3 --> GLUE[Glue Data Catalog]
-    GLUE --> ATHENA[Amazon Athena]
-    ATHENA --> STG[dbt staging views]
-    STG --> MARTS[dbt facts, dimensions<br/>and bridges]
-    EBT[EventBridge Scheduler<br/>hourly :15 / daily 04:40] --> T[Trigger Lambda<br/>gh_action_trigger.lambda_handler]
-    T --> GHA[GitHub Actions<br/>workflow_dispatch]
-    GHA --> MARTS
+flowchart TB
+    subgraph ingest[Ingestion]
+        direction LR
+        EB[EventBridge Scheduler<br/>hourly at :00] --> L[Spotify Lambda<br/>spotify_connector.lambda_handler]
+        L --> API[Spotify Accounts and<br/>Recently Played APIs]
+        L <--> SSM[SSM Parameter Store<br/>token and cursor]
+        EBD[EventBridge Scheduler<br/>daily 03:30 Toronto] --> D[Deezer Lambda<br/>deezer_connector.lambda_handler]
+        D --> DZ[Deezer API]
+        D <--> DDB[(DynamoDB<br/>spotify-track-enrichment)]
+    end
+
+    subgraph lake[Storage and query]
+        direction LR
+        S3[(S3 raw JSON<br/>partitioned by date)] --> GLUE[Glue Data Catalog] --> ATHENA[Amazon Athena]
+    end
+
+    subgraph orch[Orchestration]
+        direction LR
+        EBT[EventBridge Scheduler<br/>hourly :15 / daily 04:40] --> T[Trigger Lambda<br/>gh_action_trigger.lambda_handler] --> GHA[GitHub Actions<br/>OIDC role]
+    end
+
+    subgraph dbt[dbt models on Athena]
+        direction LR
+        SEED[excluded_tracks seed] -. filters out .-> STG[staging views]
+        STG --> MARTS[facts, dimensions, bridges<br/>fct_plays is Iceberg]
+        MARTS --> RPT[reporting tables<br/>agg_* and rpt_*<br/>daily builds only]
+    end
+
+    subgraph dash[Dashboard]
+        direction LR
+        EXP[export_reporting.py<br/>after daily builds] --> DUCK[(S3<br/>dashboard/spotify.duckdb)]
+        DUCK -- read-only key --> APP[Streamlit app<br/>my-spotify.streamlit.app]
+    end
+
+    ingest -- raw JSON --> lake
+    lake --> dbt
+    orch -- runs --> dbt
+    orch -- runs --> dash
+    dbt -- reporting tables --> dash
 ```
 
 Pipeline sequence:
@@ -35,9 +59,11 @@ Pipeline sequence:
 5. The cursor advances only after every S3 write completes.
 6. Athena reads the JSON through `spotify_raw.recently_played`.
 7. At minute 15, EventBridge Scheduler invokes the trigger Lambda, which dispatches the dbt workflow with `mode: spotify`.
-8. GitHub Actions assumes an AWS role through OIDC and runs `dbt build` on the Spotify models.
+8. GitHub Actions assumes an AWS role through OIDC and runs `dbt build` on the Spotify models. Tracks in the `excluded_tracks` seed are filtered out in staging.
 9. Daily at 03:30 Toronto, the Deezer Lambda looks up genres for new albums by ISRC.
-10. Daily at 04:40 Toronto, the trigger Lambda dispatches a full build with `mode: full`.
+10. Daily at 04:40 Toronto, the trigger Lambda dispatches a full build with `mode: full`. It also builds the reporting tables and compacts `fct_plays` with Iceberg `OPTIMIZE` and `VACUUM`.
+11. After the full build, `dashboard/export_reporting.py` copies the reporting tables from Athena into one DuckDB file at `s3://<bucket>/dashboard/spotify.duckdb`.
+12. The Streamlit app downloads that file with a key that can only read it, rechecks it hourly, and serves the dashboard.
 
 ## Repository layout
 
@@ -336,7 +362,9 @@ Restrict the environment and IAM OIDC subject to this repository and `main`. The
 
 ## Dashboard
 
-A Streamlit app in `dashboard/` with four pages: Overview, Top, When I listen, and Genres.
+Live at https://my-spotify.streamlit.app/. A Streamlit app in `dashboard/` with four pages: Overview, Top, When I listen, and Genres.
+
+The Overview's "Last 7 days" tiles cover the 7 complete days before the export, compared with the 7 days before those. The export runs early in the morning, so the current day is left out.
 
 The app never queries Athena. After each daily/full dbt build, the workflow runs `dashboard/export_reporting.py`, which runs `select *` on every `agg_*`/`rpt_*` table and writes them into one DuckDB file at `s3://<bucket>/dashboard/spotify.duckdb`. The app downloads that file (re-checked hourly) and queries it in memory, using the `spotify-dashboard-reader` IAM user, which can only `s3:GetObject` that one object.
 

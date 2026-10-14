@@ -34,7 +34,7 @@ def ranking(df: pd.DataFrame, label: str, tooltip: list) -> alt.Chart:
         color=c["accent"], cornerRadiusTopRight=4, cornerRadiusBottomRight=4,
     ).encode(
         x=alt.X("plays:Q", title="Plays", axis=alt.Axis(tickMinStep=1)),
-        y=alt.Y(f"{label}:N", sort="-x", title=None, axis=alt.Axis(labelLimit=280)),
+        y=alt.Y(f"{label}:N", sort="-x", title=None, axis=alt.Axis(labelLimit=150)),
         tooltip=tooltip,
     ).properties(height=max(120, 30 * len(df)))
 

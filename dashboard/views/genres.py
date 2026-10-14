@@ -38,11 +38,11 @@ weekly["stack_order"] = weekly["genre_group"].map({g: i for i, g in enumerate(do
 mix = alt.Chart(weekly).mark_bar(stroke=c["surface"], strokeWidth=2, width=alt.RelativeBandSize(0.7)).encode(
     x=alt.X("week_label:O", title="Week of", sort=weekly["week_label"].unique().tolist(), axis=alt.Axis(labelAngle=0)),
     y=alt.Y("plays:Q", stack="normalize", title="Share of genre plays", axis=alt.Axis(format="%")),
-    color=alt.Color("genre_group:N", scale=palette, legend=alt.Legend(title=None, orient="right")),
+    color=alt.Color("genre_group:N", scale=palette, legend=alt.Legend(title=None, orient="bottom", columns=2)),
     order=alt.Order("stack_order:Q"),
     tooltip=[alt.Tooltip("week:T", title="Week of", format="%b %-d"), alt.Tooltip("genre_group:N", title="Genre"),
              alt.Tooltip("plays:Q", title="Plays"), alt.Tooltip("share:Q", title="Share", format=".0%")],
-).properties(height=340)
+).properties(height=460)
 st.altair_chart(mix, width="stretch")
 st.caption("The first and current weeks are partial.")
 

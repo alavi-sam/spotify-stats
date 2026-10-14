@@ -35,25 +35,26 @@ new_tracks = query("""
 """, (last_full, last_full, last_full, last_full)).iloc[0]
 
 
-def kpi(col, label, current, previous, fmt="{:,.0f}", help=None):
+def kpi(row, label, current, previous, fmt="{:,.0f}", help=None):
     current = 0 if pd.isna(current) else current
     delta = None if pd.isna(previous) else fmt.format(current - previous)
     # neutral delta color: listening less isn't "bad"
-    col.metric(label, fmt.format(current), delta, delta_color="off", border=True, help=help)
+    row.metric(label, fmt.format(current), delta, delta_color="off", border=True, help=help, width="stretch")
 
 
 first_full = last_full - pd.Timedelta(days=6)
 st.subheader("Last 7 days", help="The last 7 complete days, compared with the 7 days before. "
                                  "Today is left out because it's still in progress.")
 st.caption(f"{first_full:%b %-d} – {last_full:%b %-d}")
-k1, k2, k3, k4 = st.columns(4)
-for col, label, field, fmt, help in [
-    (k1, "Plays", "plays", "{:,.0f}", None),
-    (k2, "Est. hours", "hours", "{:,.1f}", "Sum of full track lengths; Spotify doesn't report time actually listened."),
-    (k3, "Artists", "artists", "{:,.0f}", None),
+# Two rows of two (st.columns would stack one tile per line on a phone)
+first_pair, second_pair = (st.container(horizontal=True, wrap=False) for _ in range(2))
+for row, label, field, fmt, help in [
+    (first_pair, "Plays", "plays", "{:,.0f}", None),
+    (first_pair, "Est. hours", "hours", "{:,.1f}", "Sum of full track lengths; Spotify doesn't report time actually listened."),
+    (second_pair, "Artists", "artists", "{:,.0f}", None),
 ]:
-    kpi(col, label, window[field].get("current"), window[field].get("previous"), fmt, help)
-kpi(k4, "New tracks", new_tracks["current"], new_tracks["previous"],
+    kpi(row, label, window[field].get("current"), window[field].get("previous"), fmt, help)
+kpi(second_pair, "New tracks", new_tracks["current"], new_tracks["previous"],
     help="Tracks played for the first time ever.")
 
 # --- daily plays with 7-day average -----------------------------------------
@@ -82,7 +83,7 @@ st.altair_chart((bars + line).properties(height=320), width="stretch")
 # --- recent plays -------------------------------------------------------------
 st.subheader("Recently played")
 recent = query("""
-    select album_image_url, played_at_local, track_name, all_artist_names, album_name
+    select album_image_url, track_name, all_artist_names, played_at_local, album_name
     from rpt_plays_enriched order by played_at_local desc limit 15
 """)
 st.dataframe(

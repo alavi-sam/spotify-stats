@@ -2,7 +2,13 @@
     materialized='incremental',
     table_type='iceberg',
     incremental_strategy='merge',
-    unique_key='play_id'
+    unique_key='play_id',
+    partitioned_by=['month(played_at_local)'],
+    table_properties={'vacuum_max_snapshot_age_seconds': 604800},
+    post_hook=[
+        "{% if var('iceberg_maintenance', false) %}optimize {{ this.render_pure() }} rewrite data using bin_pack{% endif %}",
+        "{% if var('iceberg_maintenance', false) %}vacuum {{ this.render_pure() }}{% endif %}"
+    ]
 ) }}
 
 with source as (

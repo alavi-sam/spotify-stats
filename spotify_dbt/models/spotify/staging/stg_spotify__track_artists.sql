@@ -2,6 +2,7 @@ with source as(
     SELECT
         *
     from {{ source('spotify_raw', 'recently_played') }}
+    where track.id not in (select track_id from {{ ref('excluded_tracks') }})
 ),
 
 track_artist as (

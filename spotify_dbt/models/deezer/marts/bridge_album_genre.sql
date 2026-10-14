@@ -9,10 +9,12 @@ source as (
 
 joined_tbl as (
     select 
-        album_id,
+        source.album_id,
         genre.genre_id
     from source
     join genre on genre.genre = source.genre
+    -- only albums still in the warehouse (drops albums of excluded tracks)
+    join {{ ref('dim_album') }} as album on album.album_id = source.album_id
 )
 
 select 

@@ -250,6 +250,16 @@ Dashboard-facing tables under `models/reporting/`, built from the marts. They li
 
 `est_minutes_played` sums full track lengths, so it overstates time for skipped tracks. `tests/assert_reporting_play_counts_match_fct_plays.sql` checks that every reporting table reconciles to `fct_plays`.
 
+### Excluded tracks
+
+Tracks listed in `seeds/excluded_tracks.csv` (e.g. sleep noise played on loop) are removed from the whole warehouse: the Spotify staging models filter them out, so they never reach `fct_plays`, the dims, the bridges, or the reporting tables. `bridge_album_genre` keeps only albums that exist in `dim_album`. The raw JSON in S3 is untouched, so removing a row from the CSV brings a track back.
+
+`fct_plays` is incremental and never deletes rows on its own, so after editing the CSV run:
+
+```bash
+dbt build --select excluded_tracks+ --full-refresh
+```
+
 The project stores UTC and `America/Toronto` timestamps. Make timezone an account-level setting before supporting users in other regions.
 
 ## Local dbt development

@@ -1,6 +1,8 @@
 with source as (select 
     *
 from {{ source('spotify_raw', 'recently_played') }}
+-- tracks listed in the excluded_tracks seed are dropped from the whole warehouse
+where track.id not in (select track_id from {{ ref('excluded_tracks') }})
 ),
 
 local_time as (

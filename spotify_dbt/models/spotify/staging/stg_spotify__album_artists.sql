@@ -2,6 +2,7 @@ with source as(
     SELECT
     track.album as album
     from {{ source('spotify_raw', 'recently_played') }}
+    where track.id not in (select track_id from {{ ref('excluded_tracks') }})
 ),
 
 album_artist as (

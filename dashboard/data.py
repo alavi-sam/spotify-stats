@@ -25,8 +25,15 @@ def _connection():
             aws_access_key_id=aws["access_key_id"],
             aws_secret_access_key=aws["secret_access_key"],
         )
-        path = Path(tempfile.gettempdir()) / "spotify.duckdb"
-        s3.download_file(aws["bucket"], aws["key"], str(path))
+        # One file per export: DuckDB reuses an open database for a path it has
+        # seen, so re-downloading over the same path kept serving the old data.
+        etag = s3.head_object(Bucket=aws["bucket"], Key=aws["key"])["ETag"].strip('"')
+        path = Path(tempfile.gettempdir()) / f"spotify-{etag}.duckdb"
+        if not path.exists():
+            s3.download_file(aws["bucket"], aws["key"], str(path))
+            for old in path.parent.glob("spotify-*.duckdb"):
+                if old != path:
+                    old.unlink(missing_ok=True)
     return duckdb.connect(str(path), read_only=True)
 
 

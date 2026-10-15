@@ -77,10 +77,14 @@ jobs:
       - name: Validate connection
         run: dbt debug --target prod --profiles-dir ../.github/dbt
 
-      # Hourly dispatch: only the Spotify models (new plays into fct_plays)
+      # Hourly dispatch: only the Spotify models (new plays into fct_plays).
+      # Cautious selection skips tests that also read the reporting models,
+      # which only the daily run rebuilds.
       - name: Build and test Spotify models (hourly)
         if: inputs.mode == 'spotify'
-        run: dbt build --target prod --profiles-dir ../.github/dbt --select path:models/spotify
+        run: >-
+          dbt build --target prod --profiles-dir ../.github/dbt
+          --select path:models/spotify --indirect-selection cautious
 
       # Daily dispatch, push, or manual run: everything, plus Iceberg
       # OPTIMIZE + VACUUM post-hooks (compacts the hourly merges' small files)

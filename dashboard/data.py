@@ -16,7 +16,9 @@ LOCAL_FILE = Path(__file__).parent / "spotify.duckdb"
 
 @st.cache_resource(ttl="1h", show_spinner="Loading listening data…")
 def _connection():
+    """The open database and a version string that changes with every export."""
     path = LOCAL_FILE
+    version = f"local-{path.stat().st_mtime_ns}" if path.exists() else None
     if not path.exists():
         aws = st.secrets["aws"]
         s3 = boto3.client(
@@ -34,10 +36,16 @@ def _connection():
             for old in path.parent.glob("spotify-*.duckdb"):
                 if old != path:
                     old.unlink(missing_ok=True)
-    return duckdb.connect(str(path), read_only=True)
+        version = etag
+    return duckdb.connect(str(path), read_only=True), version
 
 
-@st.cache_data(ttl="1h", show_spinner=False)
 def query(sql: str, params: tuple = ()) -> pd.DataFrame:
+    return _cached_query(_connection()[1], sql, params)
+
+
+# keyed on the export version, so results from an older export are never reused
+@st.cache_data(max_entries=256, show_spinner=False)
+def _cached_query(version: str, sql: str, params: tuple) -> pd.DataFrame:
     # one cursor per call: DuckDB connections aren't safe to share across sessions
-    return _connection().cursor().execute(sql, list(params)).df()
+    return _connection()[0].cursor().execute(sql, list(params)).df()
